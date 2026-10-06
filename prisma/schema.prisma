@@ -1,15 +1,59 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum FieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  EMAIL
+  DATE
+  SELECT
+  RADIO
+  CHECKBOX
+}
+
+model Form {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  published   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  fields      Field[]
+  submissions Submission[]
+}
+
+model Field {
+  id       String    @id @default(uuid())
+  formId   String
+  form     Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
+  label    String
+  type     FieldType
+  required Boolean   @default(false)
+  // Choices for SELECT / RADIO / CHECKBOX fields, e.g. ["Red", "Blue"]
+  options  Json?
+  order    Int
+
+  @@index([formId])
+}
+
+model Submission {
+  id        String   @id @default(uuid())
+  formId    String
+  form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  // Answers keyed by field id, e.g. { "<fieldId>": "value" }
+  data      Json
+  createdAt DateTime @default(now())
+
+  @@index([formId])
 }
