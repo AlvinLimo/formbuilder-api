@@ -10,7 +10,10 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   engine: "classic",
+  // The CLI (migrations, introspection) must use the session-mode pooler;
+  // the app's runtime client uses DATABASE_URL from schema.prisma.
   datasource: {
-    url: env("DATABASE_URL"),
+    url: env("DIRECT_URL"),
   },
 });
+
