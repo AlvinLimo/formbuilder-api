@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,6 +6,12 @@ datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+}
+
+enum FormStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
 }
 
 enum FieldType {
@@ -20,40 +23,125 @@ enum FieldType {
   SELECT
   RADIO
   CHECKBOX
+  PHONE
+  YES_NO
+  RATING
+  LINEAR_SCALE
+  FILE
+  HEADING
+  INSTRUCTION
+}
+
+model User {
+  id              String             @id @default(uuid())
+  email           String             @unique
+  name            String
+  passwordHash    String
+  createdAt       DateTime           @default(now())
+  forms           Form[]
+  collaborations  FormCollaborator[]
+  assignments     FormAssignment[]   @relation("AssignmentRecipient")
+  sentAssignments FormAssignment[]   @relation("AssignmentSender")
+  submissions     Submission[]
+}
+
+model FormCollaborator {
+  formId    String
+  form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([formId, userId])
+  @@index([userId])
+}
+
+model FormAssignment {
+  id           String    @id @default(uuid())
+  formId       String
+  form         Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User      @relation("AssignmentRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  assignedById String?
+  assignedBy   User?     @relation("AssignmentSender", fields: [assignedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+  submittedAt  DateTime?
+
+  @@unique([formId, userId])
+  @@index([userId])
 }
 
 model Form {
-  id          String       @id @default(uuid())
-  title       String
-  description String?
-  published   Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  fields      Field[]
-  submissions Submission[]
+  id               String             @id @default(uuid())
+  ownerId          String?
+  owner            User?              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  titleDoc         Json?
+  descriptionDoc   Json?
+  status           FormStatus         @default(DRAFT)
+  publicId         String?            @unique
+  // Block repeat submissions from the same browser
+  limitOneResponse Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  sections         Section[]
+  fields           Field[]
+  submissions      Submission[]
+  collaborators    FormCollaborator[]
+  assignments      FormAssignment[]
+
+  @@index([ownerId])
 }
 
-model Field {
-  id       String    @id @default(uuid())
-  formId   String
-  form     Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
-  label    String
-  type     FieldType
-  required Boolean   @default(false)
-  // Choices for SELECT / RADIO / CHECKBOX fields, e.g. ["Red", "Blue"]
-  options  Json?
-  order    Int
+model Section {
+  id             String  @id @default(uuid())
+  formId         String
+  form           Form    @relation(fields: [formId], references: [id], onDelete: Cascade)
+  title          String
+  titleDoc       Json?
+  descriptionDoc Json?
+  order          Int
+  fields         Field[]
 
   @@index([formId])
 }
 
-model Submission {
-  id        String   @id @default(uuid())
-  formId    String
-  form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
-  // Answers keyed by field id, e.g. { "<fieldId>": "value" }
-  data      Json
-  createdAt DateTime @default(now())
+model Field {
+  id             String    @id @default(uuid())
+  formId         String
+  form           Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
+  sectionId      String
+  section        Section   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  label          String
+  titleDoc       Json?
+  descriptionDoc Json?
+  type           FieldType
+  required       Boolean   @default(false)
+  // Ordered choices for SELECT / RADIO / CHECKBOX, e.g. [{ "id", "label" }]
+  options        Json?
+  validation     Json?
+  order          Int
 
+  @@index([formId])
+  @@index([sectionId])
+}
+
+model Submission {
+  id            String   @id @default(uuid())
+  formId        String
+  form          Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  // Answers keyed by field id
+  data          Json
+  // Question labels, types, and options at the time of submission
+  snapshot      Json
+  // Browser-generated id, stored only while the form limits one response per browser
+  respondentKey String?
+  // Set when the respondent was signed in
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+
+  @@unique([formId, respondentKey])
   @@index([formId])
 }

@@ -1,10 +1,17 @@
-import "dotenv/config";
 import app from "./index.js";
 import { prisma } from "./lib/prisma.js";
+import { assertJwtSecret } from "./lib/auth.js";
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3001;
 
 async function start() {
+  try {
+    assertJwtSecret();
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
+
   try {
     await prisma.$connect();
     console.log("Connected to database");
@@ -18,7 +25,6 @@ async function start() {
   });
 }
 
-// Close the database connection cleanly on Ctrl+C or when the host stops the app.
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, async () => {
     await prisma.$disconnect();
