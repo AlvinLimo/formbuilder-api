@@ -13,42 +13,111 @@ app.get("/health", async (req, res) => {
   console.log(`Connected to database`);
 });
 
-app.get("/forms", async (req, res) => {
-  const forms = await prisma.form.findMany({
-    include: { fields: { orderBy: { order: "asc" } } },
-    orderBy: { createdAt: "desc" },
-  });
-  res.json(forms);
-});
-
-app.post("/forms", async (req, res) => {
-  const { title, description, fields = [] } = req.body;
-  if (!title) {
-    return res.status(400).json({ error: "title is required" });
+//fetch all forms
+app.get("/forms", async (req, res, next) => {
+  try {
+    const forms = await prisma.form.findMany({
+      orderBy: { createdAt:'desc'},
+      include: {
+        _count: {
+          select: { questions: true, responses: true }
+        }
+      }
+    });
+    res.json(forms);
+  } catch (error) {
+    next(error);
   }
+});
 
-  const form = await prisma.form.create({
-    data: {
-      title,
-      description,
-      fields: {
-        create: fields.map((field, index) => ({
-          label: field.label,
-          type: field.type,
-          required: field.required ?? false,
-          options: field.options,
-          order: index,
-        })),
+//Fetch a single form by ID
+app.get("/forms/:id", async (req, res, next) =>{
+  try{
+    const form = await prisma.form.findUnique({
+      where: {id:req.params.id},
+      include: {
+        questions:{
+          orderBy: {order:'asc'},
+          include:{
+            options:true
+          }
+        }
+      }
+    });
+
+    if(!form) return res.status(404).json({error:"Form not found"});
+    res.json(form);
+  } catch (error) {
+    next(error);
+  }
+});
+
+//creating a new form
+app.post("/forms", async (req, res, next) => {
+  try {
+    const { title, description,questions = [] } = req.body;
+    if(!title){
+      return res.status(400).json({error:"Title is required"});
+    }
+
+    const form = await prisma.form.create({
+      data: {
+        title,
+        description,
+        isPublished: true,
+        questions: {
+          create: questions.map((q, index) => ({
+            text: q.text,
+            type:q.type,
+            required: q.required? true: false,
+            order:index,
+            //optional options
+            options: {
+              create: (q.options || []).map(opt => ({
+                text: opt.text
+              }))
+            }
+          }))
+        }
       },
-    },
-    include: { fields: true },
-  });
-  res.status(201).json(form);
+      include: {
+        questions: {include: {options:true}}
+      },
+    });
+    res.status(201).json(form);
+  }catch (error) {
+    next(error);
+  }
 });
 
+//submit form answers
+app.post("/forms/:id/responses", async (req, res, next) => {
+  try {
+    const {id} = req.params;
+    const { answers } = req.body;
+
+    const response = await prisma.response.create({
+      data:{
+        formId: id,
+        answers: {
+          create: answers.map(answer => ({
+            questionId: ans.questionId,
+            value: string(ans.value)
+          }))
+        }
+      }
+    });
+
+    res.status(201).json({message: "Response submitted successfully", response});
+  } catch (error) {
+    next(error);
+  } 
+})
+
+//global error handler
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: "Internal server error" });
-});
+  console.error("API Error", err.message);
+  res.status(500).json({error: "Internal Server Error"});
+})
 
 export default app;

@@ -14,6 +14,7 @@ export default defineConfig({
   // the app's runtime client uses DATABASE_URL from schema.prisma.
   datasource: {
     url: env("DIRECT_URL"),
+    
   },
 });
 

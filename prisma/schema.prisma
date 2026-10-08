@@ -1,59 +1,70 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-enum FieldType {
-  TEXT
-  TEXTAREA
-  NUMBER
-  EMAIL
-  DATE
-  SELECT
-  RADIO
+//allowed question types
+enum QuestionType {
+  SHORT_ANSWER
+  PARAGRAPH
+  MULTIPLE_CHOICE
   CHECKBOX
+  DROPDOWN
 }
 
 model Form {
-  id          String       @id @default(uuid())
-  title       String
+  id          String    @id @default(uuid())
+  title       String 
   description String?
-  published   Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  fields      Field[]
-  submissions Submission[]
+  isPublished Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  questions   Question[]
+  responses   Response[]
 }
 
-model Field {
-  id       String    @id @default(uuid())
-  formId   String
-  form     Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
-  label    String
-  type     FieldType
-  required Boolean   @default(false)
-  // Choices for SELECT / RADIO / CHECKBOX fields, e.g. ["Red", "Blue"]
-  options  Json?
-  order    Int
+model Question {
+  id          String    @id @default(uuid())
+  text        String
+  type        QuestionType
+  required    Boolean   @default(false)
+  order       Int
 
-  @@index([formId])
+  formId      String
+  form        Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
+  options     Option[]
+  answers     Answer[]
 }
 
-model Submission {
-  id        String   @id @default(uuid())
-  formId    String
-  form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
-  // Answers keyed by field id, e.g. { "<fieldId>": "value" }
-  data      Json
-  createdAt DateTime @default(now())
+model Option {
+  id          String    @id @default(uuid())
+  text        String
+  questionId  String
+  question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade )
+}
 
-  @@index([formId])
+model Response {
+  id          String    @id @default(uuid())
+  createdAt   DateTime  @default(now())
+  formId      String
+  form        Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  answers     Answer[]
+}
+
+model Answer {
+  id          String    @id @default(uuid())
+  value       String
+
+  responseId  String
+  response    Response  @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  
+  questionId  String
+  question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
