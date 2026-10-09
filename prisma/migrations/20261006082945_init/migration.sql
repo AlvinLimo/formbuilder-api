@@ -18,8 +18,8 @@ CREATE TABLE "Field" (
     "id" TEXT NOT NULL,
     "formId" TEXT NOT NULL,
     "label" TEXT NOT NULL,
-    "type" "FieldType" NOT NULL,
     "required" BOOLEAN NOT NULL DEFAULT false,
+    "type" "FieldType" NOT NULL,
     "options" JSONB,
     "order" INTEGER NOT NULL,
 
