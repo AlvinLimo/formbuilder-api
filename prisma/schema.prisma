@@ -3,68 +3,75 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-//allowed question types
+model Form {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  isPublished Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  questions   Question[]
+  responses   Response[]
+  publicToken String?    @unique
+
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+}
+
+model Question {
+  id       String       @id @default(uuid())
+  text     String
+  type     QuestionType
+  required Boolean      @default(false)
+  order    Int
+  formId   String
+  answers  Answer[]
+  options  Option[]
+  form     Form         @relation(fields: [formId], references: [id], onDelete: Cascade)
+}
+
+model Option {
+  id         String   @id @default(uuid())
+  text       String
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model Response {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  formId    String
+  answers   Answer[]
+  form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+}
+
+model Answer {
+  id         String   @id @default(uuid())
+  value      String
+  responseId String
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  response   Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+}
+model User {
+  id        String   @id @default(uuid())
+  name      String?
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  forms     Form[]
+}
+
 enum QuestionType {
   SHORT_ANSWER
   PARAGRAPH
   MULTIPLE_CHOICE
   CHECKBOX
   DROPDOWN
-}
-
-model Form {
-  id          String    @id @default(uuid())
-  title       String 
-  description String?
-  isPublished Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  questions   Question[]
-  responses   Response[]
-}
-
-model Question {
-  id          String    @id @default(uuid())
-  text        String
-  type        QuestionType
-  required    Boolean   @default(false)
-  order       Int
-
-  formId      String
-  form        Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
-  options     Option[]
-  answers     Answer[]
-}
-
-model Option {
-  id          String    @id @default(uuid())
-  text        String
-  questionId  String
-  question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade )
-}
-
-model Response {
-  id          String    @id @default(uuid())
-  createdAt   DateTime  @default(now())
-  formId      String
-  form        Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
-
-  answers     Answer[]
-}
-
-model Answer {
-  id          String    @id @default(uuid())
-  value       String
-
-  responseId  String
-  response    Response  @relation(fields: [responseId], references: [id], onDelete: Cascade)
-  
-  questionId  String
-  question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
