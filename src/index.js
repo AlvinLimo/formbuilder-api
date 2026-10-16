@@ -10,6 +10,7 @@ import authRouter from "./routes/auth.js";
 import formsRouter from "./routes/forms.js";
 import publicFormsRouter from "./routes/public-forms.js";
 import usersRouter from "./routes/users.js";
+import messagesRouter from "./routes/messages.js";
 
 const app = express();
 const frontendOrigin = process.env.FRONTEND_ORIGIN ?? "http://localhost:3000";
@@ -25,6 +26,7 @@ app.get("/health", async (req, res) => {
 app.use("/auth", authRouter);
 app.use("/forms", requireAuth, formsRouter);
 app.use(usersRouter);
+app.use(messagesRouter);
 app.use("/public/forms", publicFormsRouter);
 
 app.use((err, req, res, next) => {
