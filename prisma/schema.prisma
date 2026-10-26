@@ -10,11 +10,36 @@ datasource db {
 
 //allowed question types
 enum QuestionType {
+  SHORT_TEXT
+  LONG_TEXT
+  NUMBER
+  EMAIL
+  PHONE
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  DROPDOWN
+  YES_NO
+  RATING
+  LINEAR_SCALE
+  DATE
+  FILE_UPLOAD
+  SECTION_HEADER
+  
+  // Legacy types kept to prevent breaking existing data
   SHORT_ANSWER
   PARAGRAPH
-  MULTIPLE_CHOICE
   CHECKBOX
-  DROPDOWN
+}
+
+// NEW: User model for registration and login
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  
+  forms     Form[]
 }
 
 model Form {
@@ -24,6 +49,10 @@ model Form {
   isPublished Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  // NEW: Link the form to a specific user (Optional so it doesn't break existing data)
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   questions   Question[]
   responses   Response[]
